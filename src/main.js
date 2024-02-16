@@ -11,34 +11,45 @@ import "izitoast/dist/css/iziToast.min.css";
 
 const form = document.querySelector('.search-form');
 const gallery = document.querySelector('.gallery');
-const loaderContainer = document.querySelector('.loader');
-const resultInfo = document.querySelector('.result-info');
+const loader = document.querySelector('.loader');
+loader.style.display = 'none';
 const BASE_URL = 'https://pixabay.com/api/';
 let lightbox;
-
 form.addEventListener('submit', e => {
-    e.preventDefault();
+  e.preventDefault();
+  loader.style.display = 'block';
     const queryInput = e.target.elements.query.value.trim();
     if (queryInput.length < 3) {
          iziToast.warning({
       title: 'Warning',
       message: 'Please enter a search query with at least 3 characters.',
       position: 'topRight',
-    });
+         });
+       loader.style.display = 'none';
     return;
-    }
+  }
+ 
     gallery.innerHTML = '';
-    resultInfo.innerHTML = '';
+  
     getImage(queryInput).then(({ hits }) => {
         if (hits.length > 0) {
             const galleryHTML = hits.map(createGallery).join('');
             gallery.innerHTML = galleryHTML;
-            resultInfo.innerHTML = `<p class="result-messages">Loading images, please wait...</p>`;
+            
             lightbox = new SimpleLightbox(`.gallery-link`);
-            lightbox.refresh();
-            setTimeout(() => { resultInfo.innerHTML = ''; },2000)
+          lightbox.refresh();
+          loader.style.display = 'none';
+           
+        }else {
+            iziToast.info({
+                title: 'Info',
+                message: 'Unfortunately, no images were found for your search. Please try again!',
+                position: 'topRight',
+            });
         }
     })
+  form.reset();
+  
 })
 
 function getImage(q) {
@@ -50,13 +61,23 @@ function getImage(q) {
         safeSearch: true,
     }
     const url = BASE_URL + '?' + new URLSearchParams(PARAMS).toString();
-    loaderContainer.style.display = 'block';
-    return fetch(url)
-        .then(res => res.json())
-        .catch(error => {throw error;})
-        .finally(() => {
-            loaderContainer.style.display = 'none';
-        });
+    return fetch(url).then(res => {
+            if (!res.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return res.json();
+        })
+        .catch(error => {
+            iziToast.error({
+                title: 'Error',
+                message: 'There seems to be a problem with your internet connection. Please check and try again.',
+                position: 'topRight',
+            });
+            throw error;
+        })
+      .finally(() => {
+     loader.style.display = 'none';
+  })
 }
 
 function createGallery({
